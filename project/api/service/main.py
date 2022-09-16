@@ -10,12 +10,12 @@ from bs4 import BeautifulSoup
 from colorama import Fore, Back, Style #CLI Colors
 import psutil #Memory Checker
 
-import matplotlib.pyplot as plt
-import seaborn as sns
+from .utils import get_xhash, unhash, headers, betting_types, sports_id, bookmakers_id
 
-import utils
 
 def GetOddsData(match_url, betting_type):
+    match_url = str(match_url).replace(" ", "")
+  
     # match_url = input(Back.GREEN + Fore.WHITE + Style.BRIGHT + "Enter URL:" + Style.RESET_ALL + " ")
     print(Back.GREEN + Fore.WHITE + Style.BRIGHT + f"Enter URL: {match_url}" + Style.RESET_ALL + " ")
     
@@ -35,13 +35,13 @@ def GetOddsData(match_url, betting_type):
 
     # 추후에 input 으로 변경 -> 프론트단 POST 구현
     version_id = 1
-    sport_id = utils.sport_id[sport_input]
-    betting_type = utils.betting_types[betting_type]
+    sport_id = sports_id[sport_input]
+    betting_type = betting_types[betting_type]
     scope_id = 1
-    target_bookie = utils.bookmaker_id['Pinnacle']
+    target_bookie = bookmakers_id['Pinnacle']
     
     try:
-      response = requests.get(match_url, headers=utils.headers)
+      response = requests.get(match_url, headers=headers)
       html = response.text
       soup = BeautifulSoup(html, 'html.parser')
       
@@ -59,8 +59,11 @@ def GetOddsData(match_url, betting_type):
       
       if response.status_code == 200:
           html = response.text
-          xhash = utils.unhash(re.findall(r'xhash":"([^"]+)', html)[0])
-          time_now_ms = int(round(time.time() * 1000))
+          xhash = unhash(re.findall(r'xhash":"([^"]+)', html)[0])
+          time_now = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=2)
+          print(time_now)
+          time_now_ms = round(time_now.timestamp() * 1000)
+          print(time_now_ms)
           json_url = "http://fb.oddsportal.com/feed/match/" + "%d-%d-%s-%d-%d-%s.dat?_=%s" % \
                       (
                         version_id,
@@ -71,10 +74,12 @@ def GetOddsData(match_url, betting_type):
                         xhash,
                         time_now_ms
                       )
-          response = requests.get(json_url, headers=utils.headers)
+          print(json_url)
+          response = requests.get(json_url, headers=headers)
           odds_data = json.loads(re.findall(r"\.dat',\s({.*})", response.text)[0])
+          with open('odds.json', 'w') as file:
+            json.dump(odds_data, file, indent=4)
           # Current Odds
-          bookie_odds = odds_data['d']['oddsdata']['back'][f'E-{betting_type}-{scope_id}-0-0-0']['odds'][f'{target_bookie}']
           history_cols = odds_data['d']['history']['back'].keys()
           history_dict = dict()
           for idx, cols in enumerate(history_cols):
@@ -86,7 +91,6 @@ def GetOddsData(match_url, betting_type):
                   row['timestamp'] = str(datetime.datetime.fromtimestamp(timestamp))
                   row['value'] = value
                   data[idx_s] = row
-              # data_sorted = dict(sorted(data.items(), key = lambda item: item[0], reverse=True))
               history_dict[idx] = data
           # with open('history.json', 'w') as file:
           #   json.dump(history_dict, file, indent=4)

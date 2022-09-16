@@ -8,13 +8,13 @@ betting_types = {
   "ah": 5,
 }
 
-sport_id = {
+sports_id = {
   "soccer": 2,
   "basketball": 3,
   "baseball": 6,
 }
 
-bookmaker_id = {
+bookmakers_id = {
   '10Bet': '14',
   '10cric': '540',
   '10x10bet': '581',
